@@ -1,0 +1,234 @@
+diff -u -r --new-file openssl-1.1.1zb_p2/CHANGES openssl-1.1.1zd/CHANGES
+--- openssl-1.1.1zb_p2/CHANGES	2025-10-23 15:31:18.661937846 -0500
++++ openssl-1.1.1zd/CHANGES	2025-10-23 13:16:58.000000000 -0500
+@@ -7,6 +7,23 @@
+  https://github.com/openssl/openssl/commits/ and pick the appropriate
+  release branch.
+ 
++ Changes between 1.1.1zb_p2 and 1.1.1zd [30 Sep 2025]
++
++ *) Fix incorrect check of unwrapped key size in kek_unwrap_key()
++
++    The check is off by 8 bytes so it is possible to overread by up to 8 bytes
++    and overwrite up to 4 bytes.
++
++    Although the consequences of a successful exploit of this vulnerability
++    could be severe, the probability that the attacker would be able to perform
++    it is low. Besides, password based (PWRI) encryption support in CMS
++    messages is very rarely used.
++
++    (CVE-2025-9230)
++    [Stanislav Fort]
++    [Viktor Dukhovni]
++
++
+  Changes between 1.1.1zb_p1 and 1.1.1zb_p2 [20 Jan 2025]
+ 
+  *) Fix timing side-channel in ECDSA signature computation
+@@ -20,7 +37,7 @@
+ 
+     Attacks on ECDSA nonce are also known as Minerva attack.
+ 
+-    [CVE-2024-13176]
++    (CVE-2024-13176)
+     [Tomas Mraz]
+ 
+ 
+diff -u -r --new-file openssl-1.1.1zb_p2/NEWS openssl-1.1.1zd/NEWS
+--- openssl-1.1.1zb_p2/NEWS	2025-10-23 15:31:18.661937846 -0500
++++ openssl-1.1.1zd/NEWS	2025-10-23 13:16:58.000000000 -0500
+@@ -5,6 +5,10 @@
+   This file gives a brief overview of the major changes between each OpenSSL
+   release. For more details please read the CHANGES file.
+ 
++  Major changes between 1.1.1zb_p2 and 1.1.1zd [30 Sep 2025]
++
++      o Fix out-of-bounds read & write in RFC 3211 KEK Unwrap (CVE-2025-9230)
++
+   Major changes between OpenSSL 1.1.1zb and OpenSSL 1.1.1zb_p2 [20 Jan 2025]
+ 
+       o Fix version number for versions that require two letters
+diff -u -r --new-file openssl-1.1.1zb_p2/README openssl-1.1.1zd/README
+--- openssl-1.1.1zb_p2/README	2025-10-23 15:31:18.661937846 -0500
++++ openssl-1.1.1zd/README	2025-10-23 13:16:58.000000000 -0500
+@@ -1,5 +1,5 @@
+ 
+- OpenSSL 1.1.1zb_p2 20 Jan 2025
++ OpenSSL 1.1.1zd 30 Sep 2025
+ 
+  Copyright (c) 1998-2023 The OpenSSL Project
+  Copyright (c) 1995-1998 Eric A. Young, Tim J. Hudson
+diff -u -r --new-file openssl-1.1.1zb_p2/crypto/cms/cms_pwri.c openssl-1.1.1zd/crypto/cms/cms_pwri.c
+--- openssl-1.1.1zb_p2/crypto/cms/cms_pwri.c	2023-09-11 09:08:11.000000000 -0500
++++ openssl-1.1.1zd/crypto/cms/cms_pwri.c	2025-10-23 13:16:58.000000000 -0500
+@@ -215,7 +215,7 @@
+         /* Check byte failure */
+         goto err;
+     }
+-    if (inlen < (size_t)(tmp[0] - 4)) {
++    if (inlen < 4 + (size_t)tmp[0]) {
+         /* Invalid length value */
+         goto err;
+     }
+diff -u -r --new-file openssl-1.1.1zb_p2/crypto/ec/ec_local.h openssl-1.1.1zd/crypto/ec/ec_local.h
+--- openssl-1.1.1zb_p2/crypto/ec/ec_local.h	2023-09-11 09:08:11.000000000 -0500
++++ openssl-1.1.1zd/crypto/ec/ec_local.h	2025-10-23 13:16:58.000000000 -0500
+@@ -15,6 +15,7 @@
+ #include <openssl/bn.h>
+ #include "internal/refcount.h"
+ #include "crypto/ec.h"
++#include "crypto/bn.h"
+ 
+ #if defined(__SUNPRO_C)
+ # if __SUNPRO_C >= 0x520
+diff -u -r --new-file openssl-1.1.1zb_p2/doc/man3/SSL_alloc_buffers.pod openssl-1.1.1zd/doc/man3/SSL_alloc_buffers.pod
+diff -u -r --new-file openssl-1.1.1zb_p2/include/crypto/bn.h openssl-1.1.1zd/include/crypto/bn.h
+--- openssl-1.1.1zb_p2/include/crypto/bn.h	2025-10-23 15:31:18.662937846 -0500
++++ openssl-1.1.1zd/include/crypto/bn.h	2025-10-23 13:16:58.000000000 -0500
+@@ -72,7 +72,7 @@
+  */
+ int bn_mul_mont_fixed_top(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                           BN_MONT_CTX *mont, BN_CTX *ctx);
+-int bn_mode_exp_mont_fixed_top(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
++int bn_mod_exp_mont_fixed_top(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
+                                const BIGNUM *m, BN_CTX *ctx,
+                                BN_MONT_CTX *in_mont);
+ int bn_to_mont_fixed_top(BIGNUM *r, const BIGNUM *a, BN_MONT_CTX *mont,
+diff -u -r --new-file openssl-1.1.1zb_p2/include/openssl/opensslv.h openssl-1.1.1zd/include/openssl/opensslv.h
+--- openssl-1.1.1zb_p2/include/openssl/opensslv.h	2025-10-23 15:31:18.662937846 -0500
++++ openssl-1.1.1zd/include/openssl/opensslv.h	2025-10-23 13:16:58.000000000 -0500
+@@ -40,7 +40,7 @@
+  *  major minor fix final patch/beta)
+  */
+ # define OPENSSL_VERSION_NUMBER  0x101011bfL
+-# define OPENSSL_VERSION_TEXT    "OpenSSL 1.1.1zb  20 Jan 2025"
++# define OPENSSL_VERSION_TEXT    "OpenSSL 1.1.1zd  30 Sep 2025"
+ 
+ /*-
+  * The macros below are to be used for shared library (.so, .dll, ...)
+diff -u -r --new-file openssl-1.1.1zb_p2/ssl/record/rec_layer_s3.c openssl-1.1.1zd/ssl/record/rec_layer_s3.c
+--- openssl-1.1.1zb_p2/ssl/record/rec_layer_s3.c	2025-10-23 15:31:18.641937847 -0500
++++ openssl-1.1.1zd/ssl/record/rec_layer_s3.c	2025-10-23 13:16:58.000000000 -0500
+@@ -248,6 +248,12 @@
+         /* ... now we can act as if 'extend' was set */
+     }
+ 
++    if (!ossl_assert(s->rlayer.packet != NULL)) {
++        /* does not happen */
++        SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_F_SSL3_READ_N, ERR_R_INTERNAL_ERROR);
++        return -1;
++    }
++
+     len = s->rlayer.packet_length;
+     pkt = rb->buf + align;
+     /*
+diff -u -r --new-file openssl-1.1.1zb_p2/ssl/record/ssl3_buffer.c openssl-1.1.1zd/ssl/record/ssl3_buffer.c
+--- openssl-1.1.1zb_p2/ssl/record/ssl3_buffer.c	2023-09-11 09:08:11.000000000 -0500
++++ openssl-1.1.1zd/ssl/record/ssl3_buffer.c	2025-10-23 13:16:58.000000000 -0500
+@@ -179,5 +179,7 @@
+     b = RECORD_LAYER_get_rbuf(&s->rlayer);
+     OPENSSL_free(b->buf);
+     b->buf = NULL;
++    s->rlayer.packet = NULL;
++    s->rlayer.packet_length = 0;
+     return 1;
+ }
+diff -u -r --new-file openssl-1.1.1zb_p2/ssl/ssl_sess.c openssl-1.1.1zd/ssl/ssl_sess.c
+--- openssl-1.1.1zb_p2/ssl/ssl_sess.c	2025-10-23 15:31:18.643937847 -0500
++++ openssl-1.1.1zd/ssl/ssl_sess.c	2025-10-23 13:16:58.000000000 -0500
+@@ -468,6 +468,12 @@
+         ret = s->session_ctx->get_session_cb(s, sess_id, sess_id_len, &copy);
+ 
+         if (ret != NULL) {
++            if (ret->not_resumable) {
++                /* If its not resumable then ignore this session */
++                if (!copy)
++                    SSL_SESSION_free(ret);
++                return NULL;
++            }
+             tsan_counter(&s->session_ctx->stats.sess_cb_hit);
+ 
+             /*
+diff -u -r --new-file openssl-1.1.1zb_p2/ssl/statem/extensions_clnt.c openssl-1.1.1zd/ssl/statem/extensions_clnt.c
+--- openssl-1.1.1zb_p2/ssl/statem/extensions_clnt.c	2023-09-11 09:08:11.000000000 -0500
++++ openssl-1.1.1zd/ssl/statem/extensions_clnt.c	2025-10-23 13:16:58.000000000 -0500
+@@ -1599,7 +1599,8 @@
+                                   PACKET_data(pkt),
+                                   PACKET_remaining(pkt),
+                                   s->ctx->ext.npn_select_cb_arg) !=
+-             SSL_TLSEXT_ERR_OK) {
++                                  SSL_TLSEXT_ERR_OK
++            || selected_len == 0) {
+         SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_F_TLS_PARSE_STOC_NPN,
+                  SSL_R_BAD_EXTENSION);
+         return 0;
+@@ -1630,6 +1631,8 @@
+                         size_t chainidx)
+ {
+     size_t len;
++    PACKET confpkt, protpkt;
++    int valid = 0;
+ 
+     /* We must have requested it. */
+     if (!s->s3->alpn_sent) {
+@@ -1650,6 +1653,28 @@
+                  SSL_R_BAD_EXTENSION);
+         return 0;
+     }
++
++    /* It must be a protocol that we sent */
++    if (!PACKET_buf_init(&confpkt, s->ext.alpn, s->ext.alpn_len)) {
++        SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_F_TLS_PARSE_STOC_ALPN, ERR_R_INTERNAL_ERROR);
++        return 0;
++    }
++    while (PACKET_get_length_prefixed_1(&confpkt, &protpkt)) {
++        if (PACKET_remaining(&protpkt) != len)
++            continue;
++        if (memcmp(PACKET_data(pkt), PACKET_data(&protpkt), len) == 0) {
++            /* Valid protocol found */
++            valid = 1;
++            break;
++        }
++    }
++
++    if (!valid) {
++        /* The protocol sent from the server does not match one we advertised */
++        SSLfatal(s, SSL_AD_DECODE_ERROR, SSL_F_TLS_PARSE_STOC_ALPN, SSL_R_BAD_EXTENSION);
++        return 0;
++    }
++
+     OPENSSL_free(s->s3->alpn_selected);
+     s->s3->alpn_selected = OPENSSL_malloc(len);
+     if (s->s3->alpn_selected == NULL) {
+diff -u -r --new-file openssl-1.1.1zb_p2/ssl/statem/extensions_srvr.c openssl-1.1.1zd/ssl/statem/extensions_srvr.c
+--- openssl-1.1.1zb_p2/ssl/statem/extensions_srvr.c	2023-09-11 09:08:11.000000000 -0500
++++ openssl-1.1.1zd/ssl/statem/extensions_srvr.c	2025-10-23 13:16:58.000000000 -0500
+@@ -1558,9 +1558,10 @@
+             return EXT_RETURN_FAIL;
+         }
+         s->s3->npn_seen = 1;
++        return EXT_RETURN_SENT;
+     }
+ 
+-    return EXT_RETURN_SENT;
++    return EXT_RETURN_NOT_SENT;
+ }
+ #endif
+ 
+diff -u -r --new-file openssl-1.1.1zb_p2/util/mkrc.pl openssl-1.1.1zd/util/mkrc.pl
+--- openssl-1.1.1zb_p2/util/mkrc.pl	2023-09-11 09:08:11.000000000 -0500
++++ openssl-1.1.1zd/util/mkrc.pl	2025-10-23 13:16:58.000000000 -0500
+@@ -27,7 +27,12 @@
+         $beta    = $ver & 0xf;
+         $version = "$v1.$v2.$v3";
+         if ( $beta == 0xf ) {
+-            $version .= chr( ord('a') + $v4 - 1 ) if ($v4);
++            if ( $v4 < 26 ) {
++		$version .= chr( ord('a') + $v4 - 1 );
++	    }
++	    else {
++		$version .= 'z' . chr( ord('a') + $v4 - 26 );
++	    }
+         } elsif ( $beta == 0 ) {
+             $version .= "-dev";
+         } else {
