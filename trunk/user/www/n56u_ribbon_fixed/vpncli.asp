@@ -589,6 +589,7 @@ function wg_genkey(){
 			document.form.vpnc_wg_if_public.value = response;
 		});
 	});
+	document.form.vpnc_wg_if_private.focus();
 }
 
 function wg_genpsk(){
@@ -603,6 +604,7 @@ function wg_genpsk(){
 	function(response){
 		document.form.vpnc_wg_if_preshared.value = response;
 	});
+	document.form.vpnc_wg_if_preshared.focus();
 }
 
 async function loadJSON(fileName) {
@@ -973,7 +975,7 @@ function vpnc_access_control() {
                                             <tr>
                                                 <th><#WG_Preshared_key#>:</th>
                                                 <td>
-                                                    <input type="text" name="vpnc_wg_if_preshared" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_wg_if_preshared"); %>" onKeyPress="return is_string(this,event);"/>
+                                                    <input style="-webkit-text-security: disc;" onfocus="vpnc_wg_if_preshared.style='-webkit-text-security: unset;'" onblur="vpnc_wg_if_preshared.style='-webkit-text-security: disc;';" type="text" name="vpnc_wg_if_preshared" class="input" maxlength="44" size="32" value="<% nvram_get_x("", "vpnc_wg_if_preshared"); %>" onKeyPress="return is_string(this,event);"/>
                                                     <input type="button" class="btn btn-mini" style="outline:0" onclick="wg_genpsk();" value="<#CTL_refresh#>"/>
                                                 </td>
                                             </tr>

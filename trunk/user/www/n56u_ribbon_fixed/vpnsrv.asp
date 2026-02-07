@@ -606,6 +606,7 @@ function wg_genkey(){
 			document.form.vpns_wg_public.value = response;
 		});
 	});
+	document.form.vpns_wg_private.focus();
 }
 
 function wg_client_genkey(){
