@@ -1,5 +1,5 @@
---- zapret2-0.9.0.orig/ip2net/Makefile
-+++ zapret2-0.9.0/ip2net/Makefile
+--- zapret2-0.9.3.orig/ip2net/Makefile
++++ zapret2-0.9.3/ip2net/Makefile
 @@ -1,6 +1,6 @@
  CC ?= cc
  OPTIMIZE ?= -Os
@@ -8,22 +8,29 @@
  CFLAGS_BSD = -Wno-address-of-packed-member
  CFLAGS_WIN = -static
  LIBS = 
---- zapret2-0.9.0.orig/nfq2/Makefile
-+++ zapret2-0.9.0/nfq2/Makefile
-@@ -1,9 +1,8 @@
+--- zapret2-0.9.3.orig/nfq2/Makefile
++++ zapret2-0.9.3/nfq2/Makefile
+@@ -1,15 +1,14 @@
  CC ?= cc
  PKG_CONFIG ?= pkg-config
  OPTIMIZE ?= -Os
--CFLAGS += -std=gnu99 $(OPTIMIZE) -flto=auto
-+CFLAGS += -std=gnu99 $(OPTIMIZE)
+-MINSIZE ?= -flto=auto -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables
++MINSIZE ?= -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables
+ CFLAGS += -std=gnu99 $(OPTIMIZE) $(MINSIZE)
  CFLAGS_LINUX = -Wno-alloc-size-larger-than
 -CFLAGS_SYSTEMD = -DUSE_SYSTEMD
  CFLAGS_BSD = -Wno-address-of-packed-member
  CFLAGS_CYGWIN = -Wno-address-of-packed-member -static
+ CFLAGS_CYGWIN32 =
+ CFLAGS_UBSAN = -fsanitize=undefined,alignment -fno-sanitize-recover=undefined,alignment
+-LDFLAGS += -flto=auto -Wl,--gc-sections
++LDFLAGS += -Wl,--gc-sections
  LDFLAGS_ANDROID = -llog
---- zapret2-0.9.0.orig/nfq2/sec.c
-+++ zapret2-0.9.0/nfq2/sec.c
-@@ -13,7 +13,7 @@
+ LIBS =
+ LIBS_LINUX = -lz -lnetfilter_queue -lnfnetlink -lmnl -lm
+--- zapret2-0.9.3.orig/nfq2/sec.c
++++ zapret2-0.9.3/nfq2/sec.c
+@@ -14,7 +14,7 @@
  
  #include <sys/prctl.h>
  #include <sys/syscall.h>
@@ -74,8 +81,8 @@
  bool checkpcap(uint64_t caps)
  {
  	if (!caps) return true; // no special caps reqd
---- zapret2-0.9.0.orig/nfq2/sec.h
-+++ zapret2-0.9.0/nfq2/sec.h
+--- zapret2-0.9.3.orig/nfq2/sec.h
++++ zapret2-0.9.3/nfq2/sec.h
 @@ -2,11 +2,12 @@
  
  #include <sys/types.h>
@@ -101,5 +108,5 @@
 +//#define arch_nr (offsetof(struct seccomp_data, arch))
 +//#define syscall_arg(x) (offsetof(struct seccomp_data, args[x]))
  
- #if defined(__aarch64__)
- 
+ #ifndef AUDIT_ARCH_RISCV64
+ #define AUDIT_ARCH_RISCV64 (EM_RISCV | __AUDIT_ARCH_64BIT | __AUDIT_ARCH_LE) 
