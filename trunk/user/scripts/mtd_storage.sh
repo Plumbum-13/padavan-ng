@@ -401,7 +401,8 @@ EOF
 	fi
 
 	# wireguard storage files
-	if [ -s /lib/modules/3.4.113/kernel/net/wireguard/wireguard.ko ] ; then
+	if [ -s /lib/modules/3.4.113/kernel/net/wireguard/wireguard.ko ] \
+	   || [ -s /lib/modules/3.4.113/kernel//net/amneziawg/amneziawg.ko ] ; then
 		# create wireguard client post script
 		if [ ! -f "$script_vpnc_post" ] ; then
 			cat > "$script_vpnc_post" <<'EOF'
@@ -429,11 +430,6 @@ post_stop()
   return 0
 }
 
-post_restart()
-{
-  return 0
-}
-
 post_reload()
 {
   # when update ipset, fw
@@ -446,6 +442,12 @@ post_update()
   return 0
 }
 
+post_watchdog()
+{
+  # when watchdog launched
+  return 0
+}
+
 case "$1" in
   start)
     post_start
@@ -455,16 +457,16 @@ case "$1" in
     post_stop
   ;;
 
-  restart)
-    post_restart
-  ;;
-
   reload)
     post_reload
   ;;
 
   update)
     post_update
+  ;;
+
+  watchdog)
+    post_watchdog
   ;;
 esac
 EOF

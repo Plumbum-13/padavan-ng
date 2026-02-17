@@ -359,7 +359,10 @@ start_wg()
         wg_setdns
         start_fw
 
+        call_post_script start
+
     ) 200>$LOCK_WATCHDOG
+
 }
 
 watchdog()
@@ -370,6 +373,7 @@ watchdog()
         flock -n 200 || exit 1
 
         connect_wg reconnect
+        call_post_script watchdog
 
     ) 200>$LOCK_WATCHDOG
 }
@@ -407,6 +411,30 @@ stop_wg()
         && log "client stopped"
 
     rm -f "$LOCK_WATCHDOG"
+
+    call_post_script stop
+}
+
+call_post_script()
+{
+    [ -s "$POST_SCRIPT" ] && [ -x "$POST_SCRIPT" ] || return
+
+    MODULE="$MODULE" \
+    WG="$WG" \
+    IF_NAME="$IF_NAME" \
+    IF_ADDR="$IF_ADDR" \
+    IF_MTU="$IF_MTU" \
+    IF_DNS="$IF_DNS" \
+    PEER_PORT="$PEER_PORT" \
+    PEER_ENDPOINT="$PEER_ENDPOINT" \
+    PEER_ALLOWEDIPS="$PEER_ALLOWEDIPS" \
+    NV_CLIENTS_LIST="$NV_CLIENTS_LIST" \
+    NV_IPSET_LIST="$NV_IPSET_LIST" \
+    TABLE="$TABLE" \
+    FWMARK="$FWMARK" \
+    PREF_WG="$PREF_WG" \
+    PREF_MAIN="$PREF_MAIN" \
+    "$POST_SCRIPT" "$1"
 }
 
 filter_ipv4()
@@ -577,17 +605,15 @@ case $1 in
 
     update)
         update_wg
+        call_post_script update
     ;;
 
     reload)
         reload_wg
+        call_post_script reload
     ;;
 
     watchdog)
         watchdog
     ;;
 esac
-
-IFNAME=$IF_NAME
-
-[ -s "$POST_SCRIPT" -a -x "$POST_SCRIPT" ] && . "$POST_SCRIPT"
