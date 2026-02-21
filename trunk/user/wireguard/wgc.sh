@@ -2,6 +2,8 @@
 
 ###
 
+TIMEOUT_OFFLINE=300
+
 MODULE="wireguard"
 [ -d "/lib/modules/3.4.113/kernel/net/amneziawg" ] \
     && MODULE="amneziawg"
@@ -298,15 +300,10 @@ check_connected()
 {
     is_started || die
 
-    local lh=$(get_latest_handshakes)
-    local lh_success=$(nvram get wg_latest_handshakes_t)
-    local now=$(date +%s)
+    local lh now
 
-    if [ -n "$lh_success" ] && [ "$(( now -  $lh_success ))" -gt 300 ]; then
-        log "unable to connect for more than 5 minutes, emergency restart"
-        nvram settmp wg_need_restart_t=1
-        exit
-    fi
+    lh=$(get_latest_handshakes)
+    now=$(date +%s)
 
     if [ -z "$lh" ] || [ "$lh" -eq 0 ]; then
         return 1
@@ -321,16 +318,25 @@ check_connected()
 
 check_connection_status()
 {
-    local loop=0
+    local connected loop=0
 
     while is_started; do
-        [ "$loop" -ge 10 ] && break
-        check_connected && return 0
+        [ "$loop" -ge 15 ] && break
+        check_connected && connected=1 && break
         loop=$((loop + 1))
         sleep 1
     done
 
-    return 1
+    local now=$(date +%s)
+    local lh_success=$(nvram get wg_latest_handshakes_t)
+
+    if [ -n "$lh_success" ] && [ "$(( now -  $lh_success ))" -gt "$TIMEOUT_OFFLINE" ]; then
+        log "unable to connect for more than 5 minutes, emergency restart"
+        nvram settmp wg_need_restart_t=1
+        exit
+    fi
+
+    [ -n "$connected" ]
 }
 
 start_wg()
