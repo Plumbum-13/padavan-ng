@@ -41,8 +41,6 @@ FWMARK=51820
 PREF_WG=5182
 PREF_MAIN=5181
 
-DNSMASQ_IPSET="unblock"
-
 # nethash remote networks
 VPN_REMOTE_IPSET="vpn.remote"
 # nethash excluded remote networks
@@ -480,20 +478,19 @@ ipset_load()
     local list="$3"
 
     [ -n "$name" ] || return
-    ipset -q -N $name nethash \
-        && log "ipset '$name' created successfully"
+    ipset -q create $name nethash
     ipset flush $name
 
     if [ "$mode" = "list" ]; then
         [ -s "$list" ] || return
         filter_ipv4 < $list \
             | sed -E 's#^(.*)$#add '"$name"' \1#' \
-            | ipset restore
+            | ipset -! restore
     else
         [ -n "$list" ] || return
         printf '%s\n' "$list" | filter_ipv4 \
             | sed -E 's#^(.*)$#add '"$name"' \1#' \
-            | ipset restore
+            | ipset -! restore
     fi
 
     [ $? -eq 0 ] || log "ipset '$name' failed to update"
@@ -505,17 +502,13 @@ ipset_create()
 
     [ -n "$IPSET" ] || return
 
-    ipset -q -N $DNSMASQ_IPSET nethash timeout 21600 \
-        && log "ipset '$DNSMASQ_IPSET' with timeout 21600 created successfully"
-
     ipset_load "list" "$VPN_REMOTE_IPSET" "$REMOTE_NETWORK_LIST"
     ipset_load "list" "$VPN_EXCLUDE_IPSET" "$EXCLUDE_NETWORK_LIST"
     ipset_load "nv" "$VPN_CLIENTS_IPSET" "$NV_CLIENTS_LIST"
 
     local name
     for name in $NV_IPSET_LIST; do
-        ipset -q -N $name nethash \
-            && log "ipset '$name' created successfully"
+        ipset -q create $name nethash
     done
 
     for name in $(bogon_networks); do

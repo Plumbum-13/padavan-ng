@@ -1279,6 +1279,12 @@ handle_notifications(void)
 			restart_zapret();
 		}
 #endif
+#if defined (SUPPORT_IPSET)
+		else if (strcmp(entry->d_name, RCN_RESTART_IPSET) == 0)
+		{
+			restart_ipset();
+		}
+#endif
 #if defined(APP_TOR)
 		else if (strcmp(entry->d_name, RCN_RESTART_TOR) == 0)
 		{
@@ -1378,7 +1384,9 @@ handle_notifications(void)
 #if defined (SUPPORT_IPSET)
 		else if (strcmp(entry->d_name, RCN_FLUSH_IPSET_DHCPD) == 0)
 		{
-			doSystem("/usr/bin/ipset-flush-dnsmasq.sh");
+			doSystem("sed -n 's#^[[:space:]]*ipset=/.*/##p' /etc/storage/dnsmasq/dnsmasq.ipset"
+				 "| tr ',' '\n' | sort -u"
+				 "| xargs -r -I '{}' ipset -q flush '{}'");
 		}
 #endif
 		else if (strcmp(entry->d_name, RCN_RESTART_DNS) == 0)
@@ -1789,6 +1797,11 @@ main(int argc, char **argv)
 #if defined(APP_ZAPRET)
 	else if (!strcmp(base, "restart_zapret")) {
 		restart_zapret();
+	}
+#endif
+#if defined(SUPPORT_IPSET)
+	else if (!strcmp(base, RCN_RESTART_IPSET)) {
+		notify_rc(RCN_RESTART_IPSET);
 	}
 #endif
 	else if (!strcmp(base, "start_ddns")) {
