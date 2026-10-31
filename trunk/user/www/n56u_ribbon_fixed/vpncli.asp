@@ -298,6 +298,7 @@ function change_vpnc_type() {
 	showhide_div('tbl_vpnc_access_control', is_wg);
 	showhide_div('tbl_vpnc_amnezia', found_app_awg() && is_wg);
 	showhide_div('row_vpnc_ipset', found_support_ipset());
+	showhide_div('row_vpnc_ipset_exclude', found_support_ipset());
 	showhide_div('row_dipset', found_support_ipset());
 
 	showhide_div('row_vpnc_server_script', !is_wg);
@@ -729,7 +730,7 @@ function wg_conf_import() {
 
 function vpnc_access_control() {
 	// ===== clients list =====
-	let allowed_list, added_list, allowed, added
+	let allowed_list, added_list, allowed, added, result, map
 
 	const ipmonitor = [<% get_static_client(); %>];
 
@@ -754,10 +755,12 @@ function vpnc_access_control() {
 			.map(item => ( {text: item[0], title: item[2] ?? '*', checked: false } )),
 	];
 
+	const sel_style = getComputedStyle(document.querySelector('select'));
+
 	$j('#vpnc_clients').multiSelectDropdown({
 		items: clients,
 		placeholder: "<#ZapretWORestrictions#>",
-		width: '320px',
+		width: '318px',
 		allowDelete: true,
 		allowAdd: true,
 		addSuggestionText: '<#CTL_add#>',
@@ -771,6 +774,12 @@ function vpnc_access_control() {
 				.map(item => item.text)
 				.join(',');
 		}
+	}).css({
+		color: sel_style.color,
+		backgroundColor: sel_style.backgroundColor,
+		border: sel_style.border,
+		borderRadius: sel_style.borderRadius,
+		borderColor: sel_style.borderColor
 	});
 
 	// ===== ipset lists =====
@@ -778,9 +787,8 @@ function vpnc_access_control() {
 		return;
 
 	const excludeNames = new Set([
-		"nozapret",
-		"nozapret6",
-		"vpn.remote", "vpn.exclude", "vpn.clients",
+		"nozapret", "nozapret6",
+		"vpn.remote", "vpn.exclude", "vpn.clients", "vpn.remote.list", "vpn.exclude.list",
 		"tor.remote", "tor.exclude", "tor.clients"
 	]);
 
@@ -789,7 +797,7 @@ function vpnc_access_control() {
 		.filter(Boolean)
 		.map(item => ({text: item, checked: true }));
 
-	const map = new Map(
+	map = new Map(
 		allowed.map(item => [item.text, {...item, title: ""}])
 	);
 
@@ -810,7 +818,7 @@ function vpnc_access_control() {
 		}
 	}
 
-	const result = [...map.values()].sort((a, b) => {
+	result = [...map.values()].sort((a, b) => {
 		if (a.checked !== b.checked) {
 			return a.checked ? -1 : 1;
 		}
@@ -828,16 +836,76 @@ function vpnc_access_control() {
 	$j('#vpnc_ipset').multiSelectDropdown({
 		items: result,
 		placeholder: "<#Select_menu_default#>",
-		width: '320px',
+		width: '318px',
 		allowDelete: false,
 		allowAdd: false,
-		addSuggestionText: '<#CTL_add#>',
-		removeSpaces: true,
-		allowedItems: '^[a-zA-Z0-9-_.]+$',
-		allowedAlert: '<#JS_field_noletter#>',
 		onChange: function(selected){
 			document.form.vpnc_ipset_allowed.value = selected.join(',');
 		}
+	}).css({
+		color: sel_style.color,
+		backgroundColor: sel_style.backgroundColor,
+		border: sel_style.border,
+		borderRadius: sel_style.borderRadius,
+		borderColor: sel_style.borderColor
+	});
+
+	allowed_list = "<% nvram_get_x("", "vpnc_ipset_exclude"); %>";
+	allowed = allowed_list.replace(/\s+/g, '').split(',')
+		.filter(Boolean)
+		.map(item => ({text: item, checked: true }));
+
+	map = new Map(
+		allowed.map(item => [item.text, {...item, title: ""}])
+	);
+
+	for (const item of IPSetList) {
+		if (excludeNames.has(item.name)) {
+			continue;
+		}
+
+		// russian word declension...
+		const title = item.entries
+			? `${item.entries} ${declOfNum(item.entries, ['<#Entries1#>', '<#Entries2#>', '<#Entries#>'])}`
+			: "";
+
+		if (map.has(item.name)) {
+			map.get(item.name).title = title;
+		} else {
+			map.set(item.name, {text: item.name, title, checked: false});
+		}
+	}
+
+	result = [...map.values()].sort((a, b) => {
+		if (a.checked !== b.checked) {
+			return a.checked ? -1 : 1;
+		}
+
+		const aUpper = a.text[0] === a.text[0].toUpperCase();
+		const bUpper = b.text[0] === b.text[0].toUpperCase();
+
+		if (aUpper !== bUpper) {
+			return aUpper ? -1 : 1;
+		}
+
+		return a.text.localeCompare(b.text);
+	});
+
+	$j('#vpnc_ipset_exclude').multiSelectDropdown({
+		items: result,
+		placeholder: "<#Select_menu_default#>",
+		width: '318px',
+		allowDelete: false,
+		allowAdd: false,
+		onChange: function(selected){
+			document.form.vpnc_ipset_exclude.value = selected.join(',');
+		}
+	}).css({
+		color: sel_style.color,
+		backgroundColor: sel_style.backgroundColor,
+		border: sel_style.border,
+		borderRadius: sel_style.borderRadius,
+		borderColor: sel_style.borderColor
 	});
 }
 
@@ -847,10 +915,6 @@ function vpnc_access_control() {
     .caption-bold {
         font-weight: bold;
     }
-
-    #vpnc_ipset .msd-title {
-        font-size: 13px;
-  }
 </style>
 
 </head>
@@ -1446,7 +1510,7 @@ function vpnc_access_control() {
                                 </tr>
                             </table>
 
-                            <table class="table" id="tbl_vpnc_access_control" style="display: none">
+                            <table class="table" id="tbl_vpnc_access_control" style="margin-bottom: 10px; display: none">
                                 <tr>
                                     <th colspan="2" style="background-color: #E3E3E3;"><#VPNC_AccessControl#></th>
                                 </tr>
@@ -1463,6 +1527,14 @@ function vpnc_access_control() {
                                     <td>
                                         <span id="vpnc_ipset"></span>
                                         <input type="hidden" name="vpnc_ipset_allowed" value="<% nvram_get_x("", "vpnc_ipset_allowed"); %>">
+                                    </td>
+                                </tr>
+
+                                <tr id="row_vpnc_ipset_exclude" style="display: none">
+                                    <th width="50%"><#VPNC_IpsetExcludeList#>:</th>
+                                    <td>
+                                        <span id="vpnc_ipset_exclude"></span>
+                                        <input type="hidden" name="vpnc_ipset_exclude" value="<% nvram_get_x("", "vpnc_ipset_exclude"); %>">
                                     </td>
                                 </tr>
 
